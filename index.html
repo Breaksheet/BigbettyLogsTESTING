@@ -72,27 +72,6 @@
     .log-table-head,.log-row{grid-template-columns:1fr;gap:4px;}
     .log-table-head .col-detail{display:none;}
   }
-
-  /* ── CHANGE NICKNAME ── */
-  .change-nick-btn{display:flex;align-items:center;gap:6px;background:rgba(79,124,255,0.10);border:1.5px solid rgba(79,124,255,0.3);border-radius:22px;color:#a5b4fc;cursor:pointer;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;padding:7px 14px;transition:all 0.2s;white-space:nowrap;}
-  .change-nick-btn:hover{background:rgba(79,124,255,0.22);border-color:rgba(79,124,255,0.7);color:#c4b5fd;}
-  .nick-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(5px);}
-  .nick-modal-overlay.hidden{display:none;}
-  .nick-modal-box{background:#1a1d27;border:1px solid #2a2d3a;border-radius:16px;max-width:380px;width:100%;padding:28px 28px 24px;box-shadow:0 20px 50px rgba(0,0,0,0.7);display:flex;flex-direction:column;gap:16px;}
-  .nick-modal-title{font-size:17px;font-weight:800;color:#e8eaf0;}
-  .nick-modal-sub{font-size:13px;color:#6b7080;margin-top:-8px;}
-  .nick-modal-input{width:100%;background:#0e0f13;border:1.5px solid #2a2d3a;border-radius:8px;color:#e8eaf0;font-family:'Syne',sans-serif;font-size:15px;font-weight:600;padding:10px 12px;outline:none;transition:border-color 0.2s;}
-  .nick-modal-input:focus{border-color:#4f7cff;}
-  .nick-modal-btns{display:flex;gap:8px;}
-  .nick-modal-save{flex:1;background:linear-gradient(135deg,#4f7cff,#7c5cfc);border:none;border-radius:8px;color:#fff;cursor:pointer;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;padding:10px;transition:opacity 0.2s;}
-  .nick-modal-save:hover{opacity:0.85;}
-  .nick-modal-cancel{background:transparent;border:1px solid #2a2d3a;border-radius:8px;color:#6b7080;cursor:pointer;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;padding:10px 16px;transition:border-color 0.2s;}
-  .nick-modal-cancel:hover{border-color:#6b7080;color:#e8eaf0;}
-  /* WHO column */
-  .log-table-head{grid-template-columns:160px 110px 120px 1fr !important;}
-  .log-row{grid-template-columns:160px 110px 120px 1fr !important;}
-  .log-who{font-family:'DM Mono',monospace;font-size:12px;color:#a5b4fc;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .badge-SESSION_START{background:rgba(34,197,94,0.10);color:#4ade80;border:1px solid rgba(34,197,94,0.28);}
 </style>
 </head>
 <body>
@@ -102,7 +81,6 @@
     <div class="logo">⏸ Break Sheet</div>
     <span style="color:var(--muted);font-size:13px;font-family:'DM Mono',monospace;">/ Logs</span>
   </div>
-  <a href="breaksheet.html" class="back-btn">← Back to Sheet</a>
 </header>
 
 <div class="main">
@@ -132,7 +110,6 @@
       <option value="AGENT_SELECTED">Agent Selected</option>
       <option value="AGENT_CLEARED">Agent Cleared</option>
       <option value="AGENTS_UPDATED">Agents Updated</option>
-      <option value="SESSION_START">Session Start</option>
     </select>
     <select class="filter-select" id="day-filter" onchange="applyFilters()">
       <option value="">All days</option>
@@ -145,7 +122,6 @@
     <div class="log-table-head">
       <div>Kyiv Time</div>
       <div>Event</div>
-      <div>Who</div>
       <div class="col-detail">Detail</div>
     </div>
     <div id="log-body">
@@ -172,8 +148,7 @@ var EVENT_LABELS = {
   ALL_CLEARED:    'ALL CLR',
   AGENT_SELECTED: 'AGENT IN',
   AGENT_CLEARED:  'AGENT OUT',
-  AGENTS_UPDATED: 'NAMES CHG',
-  SESSION_START:  'SESSION'
+  AGENTS_UPDATED: 'NAMES CHG'
 };
 
 function setSyncStatus(state, text) {
@@ -186,17 +161,18 @@ function setSyncStatus(state, text) {
 function loadLogs() {
   setSyncStatus('loading', 'Loading...');
   var sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  // Fetch only last 7 days using orderBy + startAt
-  fetch(DB_URL + '/logs.json?orderBy="ts"&startAt=' + sevenDaysAgo)
+  fetch(DB_URL + '/logs.json')
     .then(function(r) { return r.json(); })
     .then(function(data) {
       allLogs = [];
-      if (data && typeof data === 'object') {
+      if (data && typeof data === 'object' && !data.error) {
         Object.values(data).forEach(function(entry) {
           if (entry && entry.ts && entry.ts >= sevenDaysAgo) {
             allLogs.push(entry);
           }
         });
+      } else if (data && data.error) {
+        throw new Error('Firebase error: ' + data.error);
       }
       // Sort newest first
       allLogs.sort(function(a, b) { return b.ts - a.ts; });
@@ -209,7 +185,7 @@ function loadLogs() {
     .catch(function(e) {
       console.error(e);
       setSyncStatus('err', 'Error loading');
-      document.getElementById('log-body').innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Failed to load logs. Check connection.</div></div>';
+      document.getElementById('log-body').innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Failed to load logs. Check your Firebase rules allow reading /logs.</div></div>';
     });
 }
 
@@ -260,7 +236,7 @@ function applyFilters() {
       if (d !== dayF) return false;
     }
     if (q) {
-      var haystack = (log.kyiv + ' ' + log.event + ' ' + log.detail + ' ' + (log.who||'')).toLowerCase();
+      var haystack = (log.kyiv + ' ' + log.event + ' ' + log.detail).toLowerCase();
       if (!haystack.includes(q)) return false;
     }
     return true;
@@ -292,11 +268,9 @@ function renderLogs(logs) {
     // kyiv format: "DD.MM.YYYY, HH:MM:SS" or "HH:MM:SS"
     var timePart = timeStr.includes(',') ? timeStr.split(',')[1].trim() : timeStr;
 
-    var whoStr = log.who || '—';
     html += '<div class="log-row">' +
       '<div class="log-time">' + escHtml(timePart) + '</div>' +
       '<div class="log-event"><span class="' + badgeCls + '">' + escHtml(label) + '</span></div>' +
-      '<div class="log-who">' + escHtml(whoStr) + '</div>' +
       '<div class="log-detail">' + escHtml(log.detail || '') + '</div>' +
     '</div>';
   });
@@ -328,42 +302,8 @@ function pruneOldLogs() {
     .catch(function() { setSyncStatus('err', 'Prune failed'); });
 }
 
-// ── NICKNAME (change only available here in logs) ──
-function initNickDisplay(){
-  var nick = localStorage.getItem('breaksheet_nickname') || '—';
-  var el = document.getElementById('current-nick-display');
-  if(el) el.textContent = nick;
-}
-function openNickModal(){
-  var nick = localStorage.getItem('breaksheet_nickname') || '';
-  var inp = document.getElementById('nick-modal-input');
-  if(inp){ inp.value = nick; }
-  document.getElementById('nick-modal-overlay').classList.remove('hidden');
-  setTimeout(function(){ if(inp) inp.focus(); inp.select(); }, 80);
-}
-function closeNickModal(){
-  document.getElementById('nick-modal-overlay').classList.add('hidden');
-}
-function saveNickFromLogs(){
-  var val = document.getElementById('nick-modal-input').value.trim();
-  if(!val) return;
-  localStorage.setItem('breaksheet_nickname', val);
-  document.getElementById('current-nick-display').textContent = val;
-  closeNickModal();
-}
-// Enter key in nick modal
-document.getElementById('nick-modal-input').addEventListener('keydown', function(e){
-  if(e.key === 'Enter') saveNickFromLogs();
-  if(e.key === 'Escape') closeNickModal();
-});
-// Click outside modal to close
-document.getElementById('nick-modal-overlay').addEventListener('click', function(e){
-  if(e.target === this) closeNickModal();
-});
-
 // Auto-refresh every 30 seconds
 setInterval(loadLogs, 30000);
-initNickDisplay();
 loadLogs();
 </script>
 </body>
