@@ -38,8 +38,8 @@
   .clear-old-btn:hover{background:rgba(255,107,53,0.16);}
   /* Log table */
   .log-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
-  .log-table-head{display:grid;grid-template-columns:180px 140px 1fr;gap:0;background:var(--surface2);border-bottom:1px solid var(--border);padding:10px 18px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.8px;color:var(--muted);}
-  .log-row{display:grid;grid-template-columns:180px 140px 1fr;gap:0;padding:11px 18px;border-bottom:1px solid var(--border);transition:background 0.15s;align-items:start;}
+  .log-table-head{display:grid;grid-template-columns:160px 120px 130px 1fr;gap:0;background:var(--surface2);border-bottom:1px solid var(--border);padding:10px 18px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.8px;color:var(--muted);}
+  .log-row{display:grid;grid-template-columns:160px 120px 130px 1fr;gap:0;padding:11px 18px;border-bottom:1px solid var(--border);transition:background 0.15s;align-items:start;}
   .log-row:last-child{border-bottom:none;}
   .log-row:hover{background:var(--surface2);}
   .log-time{font-family:'DM Mono',monospace;font-size:13px;color:var(--muted);}
@@ -54,6 +54,7 @@
   .badge-AGENT_SELECTED{background:rgba(56,189,248,0.10);color:var(--kyiv);border:1px solid rgba(56,189,248,0.28);}
   .badge-AGENT_CLEARED{background:rgba(107,112,128,0.13);color:var(--muted);border:1px solid rgba(107,112,128,0.28);}
   .badge-AGENTS_UPDATED{background:rgba(124,92,252,0.13);color:#a78bfa;border:1px solid rgba(124,92,252,0.28);}
+  .log-who{font-family:'DM Mono',monospace;font-size:12px;color:#a5b4fc;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .log-detail{font-size:13px;color:var(--text);line-height:1.5;word-break:break-word;}
   .empty-state{text-align:center;padding:60px 20px;color:var(--muted);}
   .empty-icon{font-size:40px;margin-bottom:12px;}
@@ -122,6 +123,7 @@
     <div class="log-table-head">
       <div>Kyiv Time</div>
       <div>Event</div>
+      <div>Who</div>
       <div class="col-detail">Detail</div>
     </div>
     <div id="log-body">
@@ -236,7 +238,7 @@ function applyFilters() {
       if (d !== dayF) return false;
     }
     if (q) {
-      var haystack = (log.kyiv + ' ' + log.event + ' ' + log.detail).toLowerCase();
+      var haystack = (log.kyiv + ' ' + log.event + ' ' + log.detail + ' ' + (log.who||'')).toLowerCase();
       if (!haystack.includes(q)) return false;
     }
     return true;
@@ -268,9 +270,11 @@ function renderLogs(logs) {
     // kyiv format: "DD.MM.YYYY, HH:MM:SS" or "HH:MM:SS"
     var timePart = timeStr.includes(',') ? timeStr.split(',')[1].trim() : timeStr;
 
+    var whoStr = log.who || '—';
     html += '<div class="log-row">' +
       '<div class="log-time">' + escHtml(timePart) + '</div>' +
       '<div class="log-event"><span class="' + badgeCls + '">' + escHtml(label) + '</span></div>' +
+      '<div class="log-who">' + escHtml(whoStr) + '</div>' +
       '<div class="log-detail">' + escHtml(log.detail || '') + '</div>' +
     '</div>';
   });
